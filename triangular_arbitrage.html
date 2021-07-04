@@ -1,0 +1,1513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Triangular arbitrage</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.6/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script type="text/javascript" src="node_modules/crypto-js/crypto-js.js"></script>
+    <style>
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 60px;
+          height: 34px;
+        }
+        
+        .switch input { 
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+        
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #ccc;
+          -webkit-transition: .4s;
+          transition: .4s;
+        }
+        
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 26px;
+          width: 26px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          -webkit-transition: .4s;
+          transition: .4s;
+        }
+        
+        input:checked + .slider {
+          background-color: #2196F3;
+        }
+        
+        input:focus + .slider {
+          box-shadow: 0 0 1px #2196F3;
+        }
+        
+        input:checked + .slider:before {
+          -webkit-transform: translateX(26px);
+          -ms-transform: translateX(26px);
+          transform: translateX(26px);
+        }
+        
+        /* Rounded sliders */
+        .slider.round {
+          border-radius: 34px;
+        }
+        
+        .slider.round:before {
+          border-radius: 50%;
+        }
+
+        #dptable tr{
+            line-height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Triangular arbitrage system</h1>
+        <p>This program automatically scans for triangular arbitrage opportunities on binance and execute it</p>
+        <form>
+            <div class="row">
+                <div class="form-group col-sm-6">
+                    <input type="text" class="form-control" id="apiKey" placeholder="apiKey">
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-sm-6">
+                    <input type="text" class="form-control" id="secretKey" placeholder="secretKey">
+                </div>
+            </div>
+            <div class="row">  
+                <div class="col-sm-2">
+                    <input type="button" class="btn submitBtn btn-info" value="submit">
+                </div>
+            </div>
+        </form>
+        <div class="row">
+            <div id="login-status" class="col-sm-6">
+            </div>
+        </div>
+
+        <br>
+        <br>
+
+        <form>
+            <div class="row">
+                <div class="col-sm-4">
+                    <br>
+                    <h3>Wallet balance</h3>
+                </div>
+                <div>
+                    <input type="button" class="btn btn-info" id="update-balance" value="Update account">
+                </div>
+                <div class="col-sm-4">
+                    <label for="commision">Commision rate per trade</label><br>
+                    <input type="number" id="commision" class="form-group">%
+                    <br><br>
+                </div>
+            </div>
+            <table class="table" id="balance-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Name</th>
+                        <th>Free Amount</th>
+                        <th>Is Legal Money?</th>
+                        <th>Hedge amount</th>
+                        <th>Hedge against USDT?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </form>
+        <br><br>
+        <div class="col-sm-12">
+            <label for="max-display-rows" style="font-size:25px; font-weight:bold">Max Display Rows</label>
+            <select class="form-control col-sm-3" id="max-display-rows">
+                <option value="1">1</option>
+                <option value="3">3</option>
+                <option value="5" selected="selected">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+            </select>
+            <div style="float:right;">
+                <label for="auto-trade" style="font-size:25px; font-weight:bold">
+                    Auto Trade &nbsp;
+                </label>
+                <label class="switch">
+                    <input type="checkbox" id="auto-trade">
+                    <span class="slider round"></span>
+                </label>
+                <div>Auto Trade On!</div>
+            </div>
+        </div>
+
+        <!-- <div class="row" style="float:right;">
+            <div class="col-sm-10">
+                <label for="auto-trade" style="font-size:25px; font-weight:bold">
+                    Auto Trade &nbsp;
+                </label>
+                <label class="switch">
+                    <input type="checkbox" id="auto-trade">
+                    <span class="slider round"></span>
+                </label>
+                <div>Auto Trade On!</div>
+            </div>
+        </div> -->
+        <br>
+        <br>
+    </div>
+    <table id="dptable" class="table">
+        <thead>
+            <tr>
+                <th>X</th>
+                <th>B</th>
+                <th>A (profit currency)</th>
+                <th>Profit margin (%)</th>
+                <th># of A invested</th>
+                <th>Direction</th>
+                <th>Execute?</th>
+                <th>Execution status</th>
+                <th>Realised profit</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</body>
+<script>
+var apiKey, secretKey;
+apiKey = "bxtH25s7jf5p8iWYyciVKlGhHxrZUGRtiikl4DZKMnwKtvcmBJnXytOpNYDrzlW6"; // for testing purposes, please enter your own apiKey and secretKey via the web UI
+secretKey = "jKlVGBcoVo7BDk5sI4kXowMWdlVrc1axTsAi8xP6ZZZPLTo5lVSWdica4KCFdOY6";
+var cRate = 0.1 / 100;
+
+var lotSize = {};
+var tickSize = {};
+var minNotional = {};
+const exception = {"lot_size": "Filter failure: LOT_SIZE",
+                        "min_notional": "Filter failure: MIN_NOTIONAL",
+                        "insufficient_fund": "Account has insufficient balance for requested action."};
+(async ()=>{
+    const exchangeInfo = await getExchangeInfo();
+    for (const s of exchangeInfo["symbols"]){
+        const symbol = s["symbol"];
+        const filters = s["filters"];
+        for (const filter of filters){
+            switch(filter["filterType"]){
+                case "LOT_SIZE":
+                    lotSize[symbol] = filter["stepSize"];
+                    break;
+                case "MIN_NOTIONAL":
+                    minNotional[symbol] = filter["minNotional"];
+                    break;
+                case "PRICE_FILTER":
+                    tickSize[symbol] = filter["tickSize"];
+                    break;
+            }
+        }
+    }
+})();
+
+async function initiateOrderBook(){
+    let orderBook = {};
+    let endPoint = "/api/v3/ticker/bookTicker";
+    let request = binanceRestAPI(endPoint, "", true);
+    return new Promise(resolve=>{
+        request.onload = function(){
+            let data = JSON.parse(request.responseText);
+            for (let e of data){
+                orderBook[e["symbol"]] = {"ba": e["askPrice"] * (1+cRate),
+                                          "bb": e["bidPrice"] * (1+cRate)};
+            }
+            resolve(orderBook);
+        }
+    })
+}
+
+
+async function initiateCombinedOrderBook(orderBook){
+    let combinedOrderBook = new Array();
+    const XABs = await getXABs();
+    for (let XAB of XABs){
+        let X = XAB["X"];
+        let B = XAB["B"];
+        let A = XAB["A"];
+        let XA = XAB["XA"];
+        let XB = XAB["XB"];
+        let BA = XAB["BA"];
+        let temp_ele = {"X": X,
+                        "B": B,
+                        "A": A,
+                        "XA": XA,
+                        "XB": XB,
+                        "BA": BA,
+                        "m1/n1-1": orderBook[XA]["bb"] / orderBook[XB]["ba"] / orderBook[BA]["ba"] - 1,
+                        "n2/m2-1": orderBook[BA]["bb"] / (orderBook[XA]["ba"] / orderBook[XB]["bb"]) - 1};
+        combinedOrderBook.push(temp_ele);
+    }
+    return Promise.resolve(XABs);
+}
+
+
+async function updateOrderBookAndCombinedOrderBook(orderBook, combiedOrderBook){
+    const url = "wss://stream.binance.com:9443/ws/!bookTicker";
+    const ws = new WebSocket(url);
+    ws.onmessage = (event)=>{
+        const data = JSON.parse(event.data);
+        const symbol = data.s;
+        orderBook[symbol]["ba"] = data.a * (1+cRate);
+        orderBook[symbol]["bb"] = data.b * (1-cRate);
+        for (const e of combiedOrderBook){
+            const XA = e["XA"];
+            const XB = e["XB"];
+            const BA = e["BA"];
+            if (XA === symbol || XB === symbol || BA === symbol){
+                e["m1/n1-1"] = orderBook[XA]["bb"] / orderBook[XB]["ba"] / orderBook[BA]["ba"] - 1;
+                e["n2/m2-1"] = orderBook[BA]["bb"] / (orderBook[XA]["ba"] / orderBook[XB]["bb"]) - 1
+            }else{
+                continue;
+            }
+        }
+    }
+}
+
+
+async function setupOrderBookAndCombinedOrderBook(){
+    let orderBook = await initiateOrderBook();
+    let combinedOrderBook = await initiateCombinedOrderBook(orderBook);
+    updateOrderBookAndCombinedOrderBook(orderBook, combinedOrderBook); // essentially a wrapper of websocket.onmessage
+    return Promise.resolve([orderBook, combinedOrderBook]);
+}
+
+$(document).ready(function(){
+    $(".submitBtn").click(()=>{
+        setTimeout(login);
+    })
+    $("input#update-balance").click(()=>{
+        if (apiKey && secretKey){
+            setTimeout(updateBalance);
+        }else{
+            $("#login-status").text("Please login first");
+        }
+    })
+    populateDpTable()
+    .then(setupOrderBookAndCombinedOrderBook)
+    .then(function updateDpTable([orderBook, combinedOrderBook]){
+        const dptableBody = document.querySelector("#dptable > tbody");
+        const dptableRows = dptableBody.children;
+        requestAnimationFrame(function uponFrameUpdate(){
+            combinedOrderBook = sortCombinedOrderBook(combinedOrderBook);
+            let maxDisplayRows = document.querySelector("#max-display-rows").value;
+            // for (const row of Array.from(dptableRows).slice(maxDisplayRows, dptableRows.length)){
+            //     row.hidden = true;
+            // }
+            let i = 0;
+            for (const elem of combinedOrderBook.slice(0, maxDisplayRows)){
+                let X = elem["X"];
+                let A = elem["A"];
+                let B = elem["B"];
+                let XA = elem["XA"];
+                let XB = elem["XB"];
+                let BA = elem["BA"];
+                let profitMargin = 0.0;
+                if (elem["m1/n1-1"]>elem["n2/m2-1"]){
+                directionValue = 1;
+                profitMargin = Number(elem["m1/n1-1"]*100).toPrecision(5);
+                }else{
+                    directionValue = 2;
+                    profitMargin = Number(elem["n2/m2-1"]*100).toPrecision(5);
+                }
+                let a = dptableRows[i];
+                let b = dptableBody.querySelector("#XA-" + XA + "-XB-" + XB + "-BA-" + BA);
+                if (a !== b){
+                    a.insertAdjacentElement("beforebegin", b);
+                    dptableBody.insertAdjacentElement("beforeend", a);
+                    b.hidden = false;
+                    a.hidden = true;
+                }
+                b.children[3].children[0].innerHTML = profitMargin;
+                b.children[5].children[0].setAttribute("value", directionValue);
+                b.children[5].children[0].innerText = directionValue;
+                i++;
+            }
+            requestAnimationFrame(uponFrameUpdate);
+        })
+        return [orderBook, dptableRows];
+    })
+    .then(initExeBtn);
+})
+
+async function initExeBtn([orderBook, dptableRows]){
+    for (const row of dptableRows){
+        const exeBtn = row.children[6].children[0];
+        exeBtn.addEventListener("click", async function(){
+            const amountInputField = row.children[4].children[0];
+            var amountA = amountInputField.value;
+            amountInputField.value = "";
+            if (amountA){
+                let X = row.children[0].textContent;
+                let B = row.children[1].textContent;
+                let A = row.children[2].textContent;
+                let XA = X + A;
+                let XB = X + B;
+                let BA = B + A;
+                let direction = row.children[5].children[0].getAttribute("value");
+                if (direction == 1){
+                    if (amountA / orderBook[BA] < minNotional[XB]){
+                        console.log("[Min_notional warning] Trade aborted, Amount of " + A + " will likely not satisfy min-notional filter for " + XB);
+                        return;
+                    }
+
+                    if (amountA < minNotional[XA]){
+                        console.log("[Min_notional warning] Trade aborted, Amount of " + A + " will likely not satisfy min-notional filter for " + XA);
+                        return;
+                    }
+
+                    // Part 1
+                    try{
+                        const orderInfo = await placeMarketBuyOrder(BA, amountA);
+                        var amountB = orderInfo["executedQty"];
+                    }catch(e){
+                        switch(e["msg"]){
+                        case exception["min_notional"]:
+                            console.log("min_notional");
+                            console.log("aborted");
+                            return;
+                        case exception["lot_size"]:
+                            await lotSizeWarning(BA, "BUY");
+                            return;
+                        case exception["insufficient_fund"]:
+                            console.log("insufficient fund");
+                            console.log("aborted");
+                            return
+                        default:
+                            await unknownErrWarning(e, BA, "BUY");
+                            return;
+                        }
+                    }
+
+                    // Part 2
+                    try{
+                        const orderInfo = await placeMarketBuyOrder(XB, amountB);
+                        var amountX = orderInfo["executedQty"];
+                    }catch(e){
+                        switch(e["msg"]){
+                        case exception["min_notional"]:
+                            console.log("Part 2 min_notional error, unwinding " + BA);
+                            try{
+                            const orderInfo = await placeMarketSellOrder(BA, amountB);
+                            // Successfully unwound BA trade
+                            return;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["lot_size"]:
+                                try{
+                                    const orderInfo = await lotSizeHandler(amountB, BA)
+                                    // Successfully unwond BA trade;
+                                    return
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["min_notional"]:
+                                        // Manually resolve, can happen when amountA is just over min_notional
+                                        await manuallyResolveWarning(BA, "SELL");
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                                        // Successfully unwound BA trade
+                                        return;
+                                        }catch(e){
+                                        // Unkonw error occured
+                                        unknownErrWarning(e, BA, "SELL");
+                                        return;
+                                        }
+                                        return;
+                                    default:
+                                        // Unknown error while unwinding BA trade;
+                                        unknownErrWarning(e, BA, "SELL");
+                                        return;
+                                    }
+                                }
+                                return;
+                                case exception["min_notional"]:
+                                manuallyResolveWarning(BA, "SELL");
+                                return;
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                                    // Successfully unwound BA trade
+                                    return;
+                                }catch(e){
+                                    unknownErrWarning(e, BA, "SELL");
+                                }
+                                return;
+                                default:
+                                unknownErrWarning(e, BA, "SELL");
+                                return;
+                            }
+                            }
+                            return;
+                        case exception["insufficient_fund"]:
+                            try{
+                            const orderInfo = await insFundHandler(amountB, XB, "BUY");
+                            var amountX = orderInfo["executedQty"];
+                            break;
+                            }catch(e){
+                            unknownErrWarning(e, XB, "BUY");
+                            return;
+                            }
+                            break;
+                        case exception["lot_size"]:
+                            lotSizeWarning(XB, "BUY");
+                            return;
+                        default:
+                            unknownErrWarning(e, XB, "BUY");
+                            return;
+                        }
+                    }
+
+                    // Part 3
+                    try{
+                        const orderInfo = await placeMarketSellOrder(XA, amountX);
+                        var amountA = orderInfo["cummulativeQuoteQty"];
+                    }catch(e){
+                        switch(e["msg"]){
+                        case exception["min_notional"]: 
+                            console.log("Part 3 min_notional error, unwinding " + XB);
+                            try{
+                                const orderInfo = await placeMarketSellOrder(XB, amountX);
+                                var amountB = orderInfo["cummulativeQuoteQty"];
+                            }catch(e){
+                                switch(e["msg"]){
+                                    case exception["lot_size"]:
+                                    try{
+                                        const orderInfo = await lotSizeHandler(amountX, XB);
+                                        var amountB = orderInfo["cummulativeQuoteQty"];
+                                        break;
+                                    }catch(e){
+                                        switch(e["msg"]){
+                                        case exception["min_notional"]:
+                                            manuallyResolveWarning(XB, "SELL");
+                                            return;
+
+                                        case exception["insufficient_fund"]:
+                                            try{
+                                                const orderInfo = await insFundHandler(amountX, XB, "SELL");
+                                                var amountB = orderInfo["cummulativeQuoteQty"];
+                                            break;
+                                            }catch(e){
+                                                unknownErrWarning(e, XB, "SELL");
+                                                return;
+                                            }
+                                            break;
+                                        default:
+                                            unknownErrWarning(e, XB, "SELL");
+                                            return;
+                                        }
+                                    }
+                                    break;
+                                    
+                                    case exception["min_notional"]:
+                                    manuallyResolveWarning(XB, "SELL");
+                                    return;
+
+                                    case exception["insufficient_fund"]:
+                                    try{
+                                        const orderInfo = await insFundHandler(amountX, XB, "SELL");
+                                        var amountB = orderInfo["cummulativeQuoteQty"];
+                                        break;
+                                    }catch(e){
+                                        unknownErrWarning(e, XB, "SELL");
+                                        return;
+                                    }
+                                    break;
+
+                                    default:
+                                    unknownErrWarning(e, XB, "SELL");
+                                    return;
+                                }
+                            }
+
+                            console.log("Unwinding " + BA);
+                            try{
+                            const orderInfo = await placeMarketSellOrder(BA, amountB);
+                            // Success
+                            return;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["lot_size"]:
+                                try{
+                                    const orderInfo = await lotSizeHandler(amountB, BA);
+                                    return;
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(BA, "SELL");
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                                        var amountA = orderInfo["cummulativeQuoteQty"]
+                                        return;
+                                        }catch(e){
+                                        unknownErrWarning(e, BA, "SELL");
+                                        return;
+                                        }
+                                        return;
+                                    default:
+                                        unknownErrWarning(e, BA, "SELL");
+                                        return;
+                                    }
+                                }
+                                break;
+                                case exception["min_notional"]:
+                                manuallyResolveWarning(BA, "SELL");
+                                return;
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                                    // Success
+                                    return;
+                                }catch(e){
+                                    unknownErrWarning(e, BA, "SELL");
+                                    return;
+                                }
+                                break;
+                                default:
+                                unknownErrWarning(e, BA, "SELL");
+                                break;
+                            }
+                            }
+                            return;
+                        case exception["lot_size"]:
+                            try{
+                            const orderInfo = await lotSizeHandler(amountX, XA);
+                            // Success
+                            break;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["min_notional"]:
+                                // Same deal with min_notional on the outer level;
+                                try{
+                                    const orderInfo = await placeMarketSellOrder(XB, amountX);
+                                    var amountB = orderInfo["cummulativeQuoteQty"];
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["lot_size"]:
+                                        try{
+                                        const orderInfo = await lotSizeHandler(amountX, XB);
+                                        var amountB = orderInfo["cummulativeQuoteQty"];
+                                        break;
+                                        }catch(e){
+                                        switch(e["msg"]){
+                                            case exception["min_notional"]:
+                                            manuallyResolveWarning(XB, "SELL");
+                                            return;
+                        
+                                            case exception["insufficient_fund"]:
+                                            try{
+                                                const orderInfo = await insFundHandler(amountX, XB, "SELL");
+                                                var amountB = orderInfo["cummulativeQuoteQty"];
+                                                break;
+                                            }catch(e){
+                                                unknownErrWarning(e, XB, "SELL");
+                                                return;
+                                            }
+                                            break;
+                                            default:
+                                            unknownErrWarning(e, XB, "SELL");
+                                            return;
+                                        }
+                                        }
+                                        break;
+                                    
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(XB, "SELL");
+                                        return;
+                        
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountX, XB, "SELL");
+                                        var amountB = orderInfo["cummulativeQuoteQty"];
+                                        break;
+                                        }catch(e){
+                                        unknownErrWarning(e, XB, "SELL");
+                                        return;
+                                        }
+                                        break;
+                        
+                                    default:
+                                        unknownErrWarning(e, XB, "SELL");
+                                        return;
+                                    }
+                                }
+                        
+                                try{
+                                    const orderInfo = await placeMarketSellOrder(BA, amountB);
+                                    // Success
+                                    return;
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["lot_size"]:
+                                        try{
+                                        const orderInfo = await lotSizeHandler(amountB, BA);
+                                        return;
+                                        }catch(e){
+                                        switch(e["msg"]){
+                                            case exception["min_notional"]:
+                                            manuallyResolveWarning(BA, "SELL");
+                                            return;
+                                            case exception["insufficient_fund"]:
+                                            try{
+                                                const orderInfo = await insFundHandler(amounB, BA, "SELL");
+                                                return;
+                                            }catch(e){
+                                                unknownErrWarning(e, BA, "SELL");
+                                                return;
+                                            }
+                                            return;
+                                            default:
+                                            unknownErrWarning(e, BA, "SELL");
+                                            return;
+                                        }
+                                        }
+                                        break;
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(BA, "SELL");
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                                        // Success
+                                        return;
+                                        }catch(e){
+                                        unknownErrWarning(e, BA, "SELL");
+                                        return;
+                                        }
+                                        break;
+                                    default:
+                                        unknownErrWarning(e, BA, "SELL");
+                                        break;
+                                    }
+                                }
+                                return;
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                    // Success
+                                    break;
+                                }catch(e){
+                                    unknownErrWarning(e, XA, "SELL");
+                                    return;                  
+                                }
+                                return;
+                            }
+                            }
+                            break;
+                        case exception["insufficient_fund"]:
+                            try{
+                            const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                            // Success
+                            break;
+                            }catch(e){
+                            unknownErrWarning(e, XA, "SELL");
+                            return;  
+                            }
+                            break;
+                        default:
+                            unknownErrWarning(e, XA, "SELL");
+                            return;
+                        }
+                    }
+
+                    console.log("Arbitrage successful, direction: 1");
+                }else if(direction == 2){
+                    if (amountA / orderBook[XA] * orderBook[XB] < minNotional[XB]){
+                        console.log("[Min_notional warning] Trade aborted, Amount of " + "USDT" + " will likely not satisfy min-notional filter for " + XB);
+                        return;
+                    }
+
+                    if (amountA < minNotional[BA]){
+                        console.log("[Min_notional warning] Trade aborted, Amount of " + "USDT" + " will likely not satisfy min-notional filter for " + BA);
+                        return;
+                    }
+
+                    // Part 1
+                    try{
+                        const orderInfo = await placeMarketBuyOrder(XA, amountA);
+                        var amountX = orderInfo["executedQty"];
+                    }catch(e){
+                        switch(e["msg"]){
+                        case exception["lot_size"]:
+                            lotSizeWarning(XA, "BUY");
+                            return;
+                        case exception["min_notional"]:
+                            console.log("min_notional");
+                            console.log("abort")
+                            return;
+                        case exception["insufficient_fund"]:
+                            console.log("insufficient_fund");
+                            console.log("abort");
+                            return;
+                        default:
+                            unknownErrWarning(e, XA, "BUY");
+                            return;
+                        }
+                    }
+                  
+                    // Part 2
+                    try{
+                        const orderInfo = await placeMarketSellOrder(XB, amountX);
+                        var amountB = orderInfo["cummulativeQuoteQty"];
+                    }catch(e){
+                        switch(e["msg"]){
+                        case exception["lot_size"]:
+                            try{
+                            const orderInfo = await lotSizeHandler(amountX, XB);
+                            var amountB = orderInfo["cummulativeQuoteQty"];
+                            break;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["min_notional"]:
+                                // unwind XA
+                                try{
+                                    const orderInfo = await placeMarketSellOrder(XA, amountX);
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                    return;
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["lot_size"]:
+                                        try{
+                                        const orderInfo = await lotSizeHandler(amountX, XA);
+                                        var amountA = orderInfo["cummulativeQuoteQty"];
+                                        return;
+                                        }catch(e){
+                                        switch(e["msg"]){
+                                            case exception["min_notional"]:
+                                            manuallyResolveWarning(XA, "SELL");   
+                                            return;
+                                            case exception["insufficient_fund"]:
+                                            try{
+                                                const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                                var amountA = orderInfo["cummulativeQuoteQty"];
+                                                return;
+                                            }catch(e){
+                                                unknownErrWarning(e, XA, "SELL");
+                                                return;                           
+                                            }
+                                            default:
+                                            unknownErrWarning(e, XA, "SELL");
+                                            return;
+                                        }
+                                        }
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(XA, "SELL");
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                        var amountA = orderInfo["cummulativeQuoteQty"];
+                                        return;
+                                        }catch(e){
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;
+                                        }
+                                    default:
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;
+                                    }
+                                }
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountX, XB, "SELL");
+                                    var amountB = orderInfo["cummulativeQuoteQty"];
+                                    break;
+                                }catch(e){
+                                    unknownErrWarning(e, XB, "SELL");
+                                    return;
+                                }
+                                default:
+                                unknownErrWarning(e, XB, "SELL");
+                                return;
+                            }
+                            }
+                            break;
+                        case exception["min_notional"]:
+                            // unwind XA
+                            try{
+                            const orderInfo = await placeMarketSellOrder(XA, amountX);
+                            var amountA = orderInfo["cummulativeQuoteQty"];
+                            return;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["lot_size"]:
+                                try{
+                                    const orderInfo = await lotSizeHandler(amountX, XA);
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                    return;
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(XA, "SELL");   
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                        var amountA = orderInfo["cummulativeQuoteQty"];
+                                        return;
+                                        }catch(e){
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;                           
+                                        }
+                                    default:
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;
+                                    }
+                                }
+                                case exception["min_notional"]:
+                                manuallyResolveWarning(XA, "SELL");
+                                return;
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                }catch(e){
+                                    unknownErrWarning(e, XA, "SELL");
+                                    return;
+                                }
+                                return;
+                                default:
+                                unknownErrWarning(e, XA, "SELL");
+                                return;
+                            }
+                            }
+                        case exception["insufficient_fund"]:
+                            try{
+                            const orderInfo = await insFundHandler(amountX, XB, "SELL");
+                            var amountB = orderInfo["cummulativeQuoteQty"];
+                            break;
+                            }catch(e){
+                            unknownErrWarning(e, XB, "SELL");
+                            return;
+                            }
+                        default:
+                            unknownErrWarning(e, XB, "SELL");
+                            return;
+                        }
+                    }
+
+                    // Part 3
+                    try{
+                        const orderInfo = await placeMarketSellOrder(BA, amountB);
+                        var amountA = orderInfo["cummulativeQuoteQty"]
+                    }catch(e){
+                        switch(e["msg"]){
+                        case exception["lot_size"]:
+                            try{
+                            const orderInfo = await lotSizeHandler(amountB, BA);
+                            var amountA = orderInfo["cummulativeQuoteQty"];
+                            break;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["min_notional"]:
+                                // Unwind XB
+                                try{
+                                    const orderInfo = await placeMarketBuyOrder(XB, amountB);
+                                    var amountX = orderInfo["executedQty"];
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["lot_size"]:
+                                        lotSizeWarning(XB, "BUY");
+                                        return;
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(XB, "BUY");
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountB, XB, "BUY");
+                                        var amountX = orderInfo["executedQty"]; 
+                                        break;
+                                        }catch(e){
+                                        unknownErrWarning(e, XB, "BUY");
+                                        return;
+                                        }
+                                    default:
+                                        unknownErrWarning(e, XB, "BUY");
+                                        return;
+                                    }
+                                }
+
+                                // Unwind XA
+                                try{
+                                    const orderInfo = await placeMarketSellOrder(XA, amountX);
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                    return;
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["lot_size"]:
+                                        try{
+                                        const orderInfo = await lotSizeHandler(amountX, XA);
+                                        var amountA = orderInfo["cummulativeQuoteQty"];
+                                        return;
+                                        }catch(e){
+                                        switch(e["msg"]){
+                                            case exception["min_notional"]:
+                                            manuallyResolveWarning(XA, "SELL");   
+                                            return;
+                                            case exception["insufficient_fund"]:
+                                            try{
+                                                const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                                var amountA = orderInfo["cummulativeQuoteQty"];
+                                            }catch(e){
+                                                unknownErrWarning(e, XA, "SELL");
+                                                return;                           
+                                            }
+                                        }
+                                        }
+                                        return;
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(XA, "SELL");
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                        var amountA = orderInfo["cummulativeQuoteQty"];
+                                        }catch(e){
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;
+                                        }
+                                        return;
+                                    default:
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;
+                                    }
+                                }
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                    break;
+                                }catch(e){
+                                    unknownErrWarning(e, BA, "SELL");
+                                    return;
+                                }
+                                default:
+                                unknownErrWarning(e, BA, "SELL");
+                                return;
+                            }
+                            }
+                        case exception["min_notional"]:
+                            // Unwind XB
+                            try{
+                            const orderInfo = await placeMarketBuyOrder(XB, amountB);
+                            var amountX = orderInfo["executedQty"];
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["lot_size"]:
+                                lotSizeWarning(XB, "BUY");
+                                return;
+                                case exception["min_notional"]:
+                                manuallyResolveWarning(XB, "BUY");
+                                return;
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountB, XB, "BUY");
+                                    var amountX = orderInfo["executedQty"]; 
+                                    break;
+                                }catch(e){
+                                    unknownErrWarning(e, XB, "BUY");
+                                    return;
+                                }
+                                default:
+                                unknownErrWarning(e, XB, "BUY");
+                                return;
+                            }
+                            }
+
+                            // Unwind XA
+                            try{
+                            const orderInfo = await placeMarketSellOrder(XA, amountX);
+                            var amountA = orderInfo["cummulativeQuoteQty"];
+                            return;
+                            }catch(e){
+                            switch(e["msg"]){
+                                case exception["lot_size"]:
+                                try{
+                                    const orderInfo = await lotSizeHandler(amountX, XA);
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                    return;
+                                }catch(e){
+                                    switch(e["msg"]){
+                                    case exception["min_notional"]:
+                                        manuallyResolveWarning(XA, "SELL");   
+                                        return;
+                                    case exception["insufficient_fund"]:
+                                        try{
+                                        const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                        var amountA = orderInfo["cummulativeQuoteQty"];
+                                        return;
+                                        }catch(e){
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;                           
+                                        }
+                                    default:
+                                        unknownErrWarning(e, XA, "SELL");
+                                        return;
+                                    }
+                                }
+                                case exception["min_notional"]:
+                                manuallyResolveWarning(XA, "SELL");
+                                return;
+                                case exception["insufficient_fund"]:
+                                try{
+                                    const orderInfo = await insFundHandler(amountX, XA, "SELL");
+                                    var amountA = orderInfo["cummulativeQuoteQty"];
+                                    return;
+                                }catch(e){
+                                    unknownErrWarning(e, XA, "SELL");
+                                    return;
+                                }
+                                default:
+                                unknownErrWarning(e, XA, "SELL");
+                                return;
+                            }
+                            }
+                        case exception["insufficient_fund"]:
+                            try{
+                            const orderInfo = await insFundHandler(amountB, BA, "SELL");
+                            var amountA = orderInfo["cummulativeQuoteQty"];
+                            break;
+                            }catch(e){
+                            unknownErrWarning(e, BA, "SELL");
+                            return;
+                            }
+                        default:
+                            unknownErrWarning(e, BA, "SELL");
+                            return;
+                        }
+                    }
+
+                    console.log("Arbitrage successful, direction: 2")
+                }else{
+                    alert("Direction should either be 1 or 2");
+                }
+            }else{
+                alert("Please enter amount of A");
+            }
+        })
+    }
+}
+
+function login(){
+    apiKey = $("#apiKey").val();
+    secretKey = $("#secretKey").val();
+    let endPoint = "/sapi/v1/account/status";
+    let queryString = "recvWindow=5000&timestamp=" + Date.now();
+    let request = binanceSignedRestAPI(endPoint, queryString, true);
+    request.onload = () => {
+        data = JSON.parse(request.responseText);
+        if (data["data"] == "Normal"){
+            $("#login-status").html("Login successful!");
+            updateBalance();
+            $("#apiKey").val("");
+            $("#secretKey").val("");
+        }else{
+            $("#login-status").text("Login failed, please inspect! " + request.responseText);
+        }
+    }
+}
+
+function binanceSignedRestAPI(endPoint, queryString, async){
+    // GET only !!
+    const baseurl = "https://young-falls-85269.herokuapp.com/https://api.binance.com";
+
+    const signature = CryptoJS.HmacSHA256(queryString, secretKey).toString(CryptoJS.enc.Hex);
+
+    const url = baseurl + endPoint + "?" + queryString + "&signature=" + signature;
+
+    const request = new XMLHttpRequest();
+    request.open("GET", url, async);
+    request.setRequestHeader("X-MBX-APIKey", apiKey);
+    request.send();
+    return (request);
+}
+
+function binanceRestAPI(endPoint, queryString, async){
+    // GET only !!
+    const baseurl = "https://young-falls-85269.herokuapp.com/https://api.binance.com";
+    let url;
+    if (!queryString){
+        url = baseurl + endPoint + "?" + queryString;
+    }else{
+        url = baseurl + endPoint;
+    }
+    const request = new XMLHttpRequest();
+    request.open("GET", url, async);
+    request.send();
+    return (request);
+}
+
+function updateBalance(){
+    let endPoint = "/sapi/v1/capital/config/getall";
+    let queryString = "recvWindow=5000&timestamp=" + Date.now(); 
+    let request = binanceSignedRestAPI(endPoint, queryString, true);
+    request.onload = ()=>{
+        let data = JSON.parse(request.responseText);
+        let walletInfo = {};
+        for (let i=0; i<data.length; i++){
+            if (data[i]["free"] > 0){
+                walletInfo[data[i]["coin"]] = {"name": data[i]["name"], "amount": data[i]["free"], "legal": data[i]["isLegalMoney"]}
+            }
+        }
+        /*0:
+        coin: "STPT"
+        depositAllEnable: true
+        free: "0"
+        freeze: "0"
+        ipoable: "0"
+        ipoing: "0"
+        isLegalMoney: false
+        locked: "0"
+        name: "Standard Tokenization Protocol"
+        networkList: [{…}]
+        storage: "0"
+        trading: true
+        withdrawAllEnable: true
+        withdrawing: "0"
+        __proto__: Object
+        1:
+        coin: "MXN"
+        depositAllEnable: true
+        free: "0"
+        freeze: "0"
+        ipoable: "0"
+        ipoing: "0"
+        isLegalMoney: true
+        locked: "0"
+        name: "Mexican Peso"
+        networkList: [{…}]
+        storage: "0"
+        trading: false
+        withdrawAllEnable: true
+        withdrawing: "0"
+        */
+        let markup = "";
+        for (let symbol in walletInfo){
+            let name = walletInfo[symbol]["name"];
+            let amount = walletInfo[symbol]["amount"];
+            let legal = walletInfo[symbol]["legal"];
+            markup += "<tr><td>" + symbol + "</td><td>" + name + "</td><td>" + amount + "</td><td>" + legal + "</td><td><input class='hedge-amount form-control'></td><td><input type='button' class='btn btn-danger hedge-btn' value='Hedge'></td></tr>";
+        }
+        $("#balance-table > tbody").html(markup);
+    }
+}
+
+function getExchangeInfo(){
+    return new Promise(resolve=>{
+        let endPoint = "/api/v3/exchangeInfo";
+        let request = binanceRestAPI(endPoint, "", true);
+        request.onload = function(){
+            resolve(JSON.parse(request.responseText));
+        }
+    })
+}
+
+async function getXABs(){
+    let exchangeInfo = await getExchangeInfo();
+    return new Promise(resolve=>{
+        // return [{"X": xxx, "A": xxx, "B": xxx, "XA": xxx, "XB": xxx}, {"X": xxx, "A": xxx, "B": xxx, "XA": xxx, "XB": xxx}]
+    let allPairName = new Array();
+    let allCoinName = new Set();
+    for (let coinInfo of exchangeInfo["symbols"].values()){
+        if (coinInfo["status"] == "TRADING"){
+            allPairName.push(coinInfo["symbol"]);
+            allCoinName.add(coinInfo["baseAsset"]);
+            allCoinName.add(coinInfo["quoteAsset"]);
+        }
+    }
+    allCoinName = Array.from(allCoinName);
+    /*baseAsset: "SNT"
+    baseAssetPrecision: 8
+    baseCommissionPrecision: 8
+    filters: (8) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+    icebergAllowed: true
+    isMarginTradingAllowed: false
+    isSpotTradingAllowed: true
+    ocoAllowed: true
+    orderTypes: (5) ["LIMIT", "LIMIT_MAKER", "MARKET", "STOP_LOSS_LIMIT", "TAKE_PROFIT_LIMIT"]
+    permissions: ["SPOT"]
+    quoteAsset: "BTC"
+    quoteAssetPrecision: 8
+    quoteCommissionPrecision: 8
+    quoteOrderQtyMarketAllowed: true
+    quotePrecision: 8
+    status: "TRADING"
+    symbol: "SNTBTC"
+    */
+    let X, A, B;
+    let XABs = new Array();
+    for (let i=0; i<allCoinName.length; i++){
+        X = allCoinName[i];
+        for (let j=0; j<allCoinName.length; j++){
+            if (j==i){
+                continue;
+            }
+            A = allCoinName[j];
+            if (allPairName.indexOf(X+A) !== -1){
+                for (let k=j+1; k<allCoinName.length; k++){
+                    if (k==i){
+                        continue;
+                    }
+                    B = allCoinName[k];
+                    if (allPairName.indexOf(X+B) !== -1){
+                        if (allPairName.indexOf(B+A) !== -1){
+                            XABs.push({"X": X, "A": A, "B": B, "XA": X+A, "XB":X+B, "BA": B+A});
+                        }else if(allPairName.indexOf(A+B) !== -1){
+                            XABs.push({"X": X, "A": B, "B": A, "XA":X+B, "XB": X+A, "BA": A+B});
+                        }else{
+                            continue;
+                        }
+                    }else{
+                        continue;
+                    }
+                }
+            }else{
+                continue;
+            }
+        }  
+    }
+    resolve(XABs);
+    })
+}
+
+async function populateDpTable(){
+    let markup = "";
+    let XABs = await getXABs();
+    for (let XAB of XABs){
+        let X = XAB["X"];
+        let A = XAB["A"];
+        let B = XAB["B"];
+        let XA = XAB["XA"];
+        let XB = XAB["XB"];
+        let BA = XAB["BA"];
+
+        markup += "<tr id='XA-" + XA + "-XB-" + XB + "-BA-" + BA + "' hidden><td><span class='X'>" + X + "</span></td><td><span class='B'>" + B + "</span></td><td><span class='A'>" + A + "</span></td><td><span id='" + XA + "-" + XB + "-profit-margin'></span></td><td><input type='number' class='form-control amount-input'></td><td><span class='direction' value=''></span></td><td><input type='button' class='btn-danger btn tradeExecuteBtn' value='Execute arbitrage'></td><td><span class='exeStatus'></span></td><td><span></span></td></tr>"
+    }
+    $("#dptable > tbody").html(markup);
+}
+
+function updateCombinedOrderBook(combinedOrderBook, orderBook, symbolToUpdate){
+    // Each element in combinedOrderBook is a triangular arbitrage pair 
+    /*
+    The data structure of triArbPair
+    {"XA": XA,
+    "XB": XB,
+    "BA": BA,
+    "m1/n1-1": orderBook[XA]["bb"] / orderBook[XB]["ba"] / orderBook[BA]["ba"] - 1,
+    "n2/m2-1": orderBook[BA]["bb"] / (orderBook[XA]["ba"] / orderBook[XB]["bb"]) - 1};
+    */
+    for (let triArbPair of combinedOrderBook){
+        let XA = triArbPair["XA"];
+        let XB = triArbPair["XB"];
+        let BA = triArbPair["BA"];
+        if (XA === symbolToUpdate || XB === symbolToUpdate || BA === symbolToUpdate){
+            triArbPair["m1/n1-1"] = orderBook[XA]["bb"] / orderBook[XB]["ba"] / orderBook[BA]["ba"] - 1;
+            triArbPair["n2/m2-1"] = orderBook[BA]["bb"] / (orderBook[XA]["ba"] / orderBook[XB]["bb"]) - 1;
+        }else{
+            continue;
+        }
+    }
+}
+
+function sortCombinedOrderBook(combinedOrderBook){
+    let mapped = combinedOrderBook.map(function(el, i) {
+    return {index: i, value: el["m1/n1-1"]>el["n2/m2-1"]?el["m1/n1-1"]:el["n2/m2-1"]};
+    })
+    mapped.sort(function(a, b) {
+    return b.value>a.value?1:b.value<a.value?-1:0;
+    })
+    let result = mapped.map(function(el){
+    return combinedOrderBook[el.index];
+    })
+    return result;
+}
+
+// Following functions are for trading purposes
+
+function placeMarketBuyOrder(symbol, quoteOrderQty){
+//   return new Promise((resolve, reject)=>{
+//     const baseurl = "https://young-falls-85269.herokuapp.com/https://testnet.binance.vision";
+//     const endPoint = "/api/v3/order";
+//     const queryString = "symbol=" + symbol.toUpperCase() + "&side=BUY&type=MARKET&quoteOrderQty=" + quoteOrderQty + "&recvWindow=5000&timestamp=" + Date.now();  
+//     console.log(queryString);
+//     const signature = CryptoJS.HmacSHA256(queryString, secretKey).toString(CryptoJS.enc.Hex);
+//     const url = baseurl + endPoint + "?" + queryString + "&signature=" + signature;
+//     const request = new XMLHttpRequest();
+//     request.open("POST", url, true);
+//     request.setRequestHeader("X-MBX-APIKey", apiKey);
+//     request.send();
+//     request.onload = function(){
+//       if (request.status >= 200 & request.status < 300){
+//         resolve(JSON.parse(request.responseText));
+//       }else{
+//         console.log(request.responseText);
+//         reject(JSON.parse(request.responseText));
+//       }
+//     }
+//   })
+const queryString = "symbol=" + symbol.toUpperCase() + "&side=BUY&type=MARKET&quoteOrderQty=" + quoteOrderQty + "&recvWindow=5000&timestamp=" + Date.now();
+  console.log(queryString);
+  const success = {"executedQty": Math.random() * 10, "cummulativeQuoteQty": quoteOrderQty};
+  const min_notional = {"msg": "Filter failure: MIN_NOTIONAL"};
+  const lot_size = {"msg": "Filter failure: LOT_SIZE"};
+  const insufficient_fund = {"msg": "Account has insufficient balance for requested action."};
+  const msg = [success, min_notional, lot_size, insufficient_fund];
+  const pick = msg[Math.floor(Math.random() * msg.length)];
+  if (pick === success){
+    console.log(pick);
+    return pick;
+  }else{
+    console.log(pick);
+    throw pick;
+  }
+}
+
+function placeMarketSellOrder(symbol, quantity){
+//   return new Promise((resolve, reject)=>{
+//     const baseurl = "https://young-falls-85269.herokuapp.com/https://testnet.binance.vision";
+//     const endPoint = "/api/v3/order";
+//     const queryString = "symbol="+ symbol.toUpperCase() + "&side=SELL&type=MARKET&quantity=" + quantity + "&recvWindow=5000&timestamp=" + Date.now();  
+//     console.log(queryString);
+//     const signature = CryptoJS.HmacSHA256(queryString, secretKey).toString(CryptoJS.enc.Hex);
+//     const url = baseurl + endPoint + "?" + queryString + "&signature=" + signature;
+//     const request = new XMLHttpRequest();
+//     request.open("POST", url, true);
+//     request.setRequestHeader("X-MBX-APIKey", apiKey);
+//     request.send();
+//     request.onload = function(){
+//       if (request.status >= 200 & request.status < 300){
+//         resolve(JSON.parse(request.responseText));
+//       }else{
+//         console.log(request.responseText);
+//         reject(JSON.parse(request.responseText));
+//       }
+//     }
+//   })
+const queryString = "symbol="+ symbol.toUpperCase() + "&side=SELL&type=MARKET&quantity=" + quantity + "&recvWindow=5000&timestamp=" + Date.now();  
+  console.log(queryString);
+  const success = {"executedQty": quantity, "cummulativeQuoteQty": Math.random() * 10};
+  const min_notional = {"msg": "Filter failure: MIN_NOTIONAL"};
+  const lot_size = {"msg": "Filter failure: LOT_SIZE"};
+  const insufficient_fund = {"msg": "Account has insufficient balance for requested action."};
+  const msg = [success, min_notional, lot_size, insufficient_fund];
+  const pick = msg[Math.floor(Math.random() * msg.length)];
+  if (pick === success){
+    console.log(pick);
+    return pick;
+  }else{
+    console.log(pick);
+    throw pick;
+  }
+}
+
+function precision(a){
+  a = parseFloat(a);
+  if (!isFinite(a)) return 0;
+  var e = 1, p = 0;
+  while (Math.round(a * e) / e !== a) { e *= 10; p++;}
+  return p;
+}
+
+function roundLotSize(amount, symbol){
+  return Math.floor(amount * 10 ** precision(lotSize[symbol])) / 10 ** precision(lotSize[symbol]);
+}
+
+function roundTickSize(amount, symbol){
+  return Math.floor(amount * 10 ** precision(tickSize[symbol])) / 10 ** precision(tickSize[symbol]);
+}
+
+async function lotSizeHandler(amount, symbol){
+  amount = roundLotSize(amount, symbol);
+  try{
+    const orderInfo = await placeMarketSellOrder(symbol, amount);
+    return orderInfo;
+  }catch(e){
+    throw e;
+  }
+}
+
+async function insFundHandler(amount, symbol, side){
+  side = side.toUpperCase();
+  switch(side){
+    case "BUY":
+      amount = roundTickSize(amount, symbol);
+      while (true){
+        try{
+          const orderInfo = await placeMarketBuyOrder(symbol, amount);
+          return orderInfo;
+        }catch(e){
+          switch(e["msg"]){
+            case exception["insufficient_fund"]:
+              amount = roundTickSize(amount - tickSize[symbol], symbol);
+              continue;
+            default:
+              throw e;
+          }
+        }
+      }
+      break;
+
+    case "SELL":
+      amount = roundLotSize(amount, symbol);
+      while (true){
+        try{
+          const orderInfo = await placeMarketSellOrder(symbol, amount);
+          return orderInfo;
+        }catch(e){
+          switch(e["msg"]){
+            case exception["insufficient_fund"]:
+              amount = roundLotSize(amount - lotSize[symbol], symbol);
+              continue;
+            default:
+              throw e;
+          }
+        }
+      }
+      break;
+
+    default:
+      throw {"msg": "Side must be either BUY or SELL"};
+  }
+}
+
+async function unknownErrWarning(e, symbol, side){
+  console.log("Unkown Error Occured while placing " + side.toUpperCase() + " order for " + symbol + " : ", e["msg"]===undefined?e:e["msg"]);
+
+}
+
+async function manuallyResolveWarning(symbol, side){
+  console.log("Min_notional error occured while placing " + side.toUpperCase() + " order for " + symbol + "  please manually resolve it");
+}
+
+async function lotSizeWarning(symbol, side){
+  console.log("Lot_size error occured while placing " + side.toUpperCase() + " order for " + symbol + ". It is not suppose to happen in the first place, please check your code or contact server");
+}
+
+</script>
+</html>
