@@ -2,6 +2,7 @@
 This web application screens for triangular arbitrage opportunities on Binance and present it in the UI. You may also toggle the auto trade button to let the underlying code execute trades for you.
 
 == Basics of triangular arbitrage you should know ==
+
 Imagine you are a foreign exchange trader in China, and you principal currency is the Chinese Yuan (CNY). You are screening the foreign exchange market and you come accross the following quotes:
 USD/CNY: bid: 6.8; ask: 6.9
 AUD/USD: bid: 0.76; ask: 0.77
@@ -53,6 +54,7 @@ This says that it could be the case that both directions are not profitable.
 
 
 == Functions of this application ==
+
 This application is an HTML file with JavaScript code directly embeded in it. It screens all trrading cryptos on the Binance exchange and presents the currency pairs that can potentially be used in a triangular arbitrage trade and present it to the UI. You can also toggle on the auto trading button to stop the UI refresh and hand all your arbitrage trade over to your computer.
 
 As I have said, there are two modes of trading. You can either trade by yourself whenever you deem the profit margin of a trade to be satisfactory, or you can set a threshold level of profit margin at which you would like to execute the trade, and let your computer do it for you.
