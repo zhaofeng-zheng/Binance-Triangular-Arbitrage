@@ -114,10 +114,6 @@
 					<div>
 						<input type="button" class="btn btn-info" id="update-balance" value="Update account" />
 					</div>
-					<div class="col-sm-4">
-						<label for="commision">Commision rate per trade</label><br />
-						<input type="number" id="commision" class="form-group" />% <br /><br />
-					</div>
 				</div>
 				<table class="table" id="balance-table">
 					<thead>
@@ -149,7 +145,7 @@
 						<input type="checkbox" id="auto-trade" />
 						<span class="slider round"></span>
 					</label>
-					<div>Auto Trade On!</div>
+					<div id="auto-trade-notice"></div>
 				</div>
 			</div>
 
@@ -187,6 +183,8 @@
 	</body>
 	<script>
 		var apiKey, secretKey;
+		apiKey = "3U2728RdbRudmyevciWNLCr4EI7sNQ9fJGrRYMBzqSrbPND9FCiS9mJIqZojLfd6";
+		secretKey = "qUw9tXyT5cnjTftte46FOyCh1Y7VQETLatxNtLY4QUBuKwOVFBsOA5SuxMRdZnaZ";
 		var cRate = 0.1 / 100;
 
 		var autoTrade = document.querySelector("input#auto-trade").checked; // Auto trade button checked?
@@ -218,6 +216,20 @@
 					}
 				}
 			}
+		})();
+
+		var walletInfo = {};
+
+		(async function () {
+			if (apiKey && secretKey) {
+				walletInfo = await getWalletInfo();
+			}
+			setTimeout(async function _() {
+				if (apiKey && secretKey) {
+					walletInfo = await getWalletInfo();
+				}
+				setTimeout(_, 10000);
+			}, 10000);
 		})();
 
 		async function initiateOrderBook() {
@@ -311,6 +323,7 @@
 					const dptableRows = dptableBody.children;
 					requestAnimationFrame(async function uponFrameUpdate() {
 						if (!autoTrade) {
+							document.querySelector("#auto-trade-notice").textContent = "";
 							combinedOrderBook = sortCombinedOrderBook(combinedOrderBook);
 							let maxDisplayRows = document.querySelector("#max-display-rows").value;
 							// for (const row of Array.from(dptableRows).slice(maxDisplayRows, dptableRows.length)){
@@ -360,10 +373,16 @@
 			document.querySelector("input#auto-trade").addEventListener("change", function () {
 				autoTrade = this.checked;
 				if (autoTrade) {
+					if (apiKey === undefined || secretKey === undefined) {
+						alert("Please enter your apiKey and secretKey first");
+						this.checked = false;
+						autoTrade = false;
+						return;
+					}
+					document.querySelector("#auto-trade-notice").textContent = "Auto trade on";
 					intervalID = setInterval(async () => {
 						combinedOrderBook = sortCombinedOrderBook(combinedOrderBook);
-						const threshold = 0.2; // Changeable
-						const amountA = 100; // Changeable
+						const threshold = 1; // Changeable
 						let trades = new Array();
 						for (const elem of combinedOrderBook) {
 							let profitMargin = 0.0;
@@ -380,13 +399,18 @@
 							}
 							const X = elem["X"];
 							const A = elem["A"];
+							if (A === "USDT") {
+								continue;
+							}
 							const B = elem["B"];
 							const XA = elem["XA"];
 							const XB = elem["XB"];
 							const BA = elem["BA"];
+							amountA = walletInfo[A]["amount"];
+							console.log(A, B, X, amountA);
 							trades.push(trade(amountA, X, B, A, XB, XA, BA, direction, orderBook));
 						}
-						Promise.allSettled(trades).then((values) => {
+						await Promise.allSettled(trades).then((values) => {
 							for (const value of values) {
 								if (value.status === "fulfilled") {
 									console.log(value.value);
@@ -409,7 +433,13 @@
 						alert("auto trade on, cannot manually trade");
 						return;
 					}
+					if (apiKey === undefined || secretKey === undefined) {
+						alert("Please enter your apiKey and secretKey first");
+						return;
+					}
 					const amountInputField = row.children[4].children[0];
+					const exeStatusField = row.children[7].children[0];
+					exeStatusField.textContent = "";
 					var amountA = amountInputField.value;
 					amountInputField.value = "";
 					if (amountA) {
@@ -423,10 +453,10 @@
 						try {
 							const msg = await trade(amountA, X, B, A, XB, XA, BA, direction, orderBook);
 							// Trade successful
-							console.log(msg);
+							exeStatusField.textContent = msg;
 						} catch (e) {
 							// Error occured in trade
-							console.log(e);
+							exeStatusField.textContent = e;
 						}
 					} else {
 						alert("Please enter amount of A");
@@ -484,59 +514,30 @@
 			return request;
 		}
 
-		function updateBalance() {
-			let endPoint = "/sapi/v1/capital/config/getall";
-			let queryString = "recvWindow=5000&timestamp=" + Date.now();
-			let request = binanceSignedRestAPI(endPoint, queryString, true);
-			request.onload = () => {
-				let data = JSON.parse(request.responseText);
+		function getWalletInfo() {
+			return new Promise((resolve) => {
+				const endPoint = "/sapi/v1/capital/config/getall";
+				const queryString = "recvWindow=5000&timestamp=" + Date.now();
+				const request = binanceSignedRestAPI(endPoint, queryString, true);
 				let walletInfo = {};
-				for (let i = 0; i < data.length; i++) {
-					if (data[i]["free"] > 0) {
-						walletInfo[data[i]["coin"]] = {
-							name: data[i]["name"],
-							amount: data[i]["free"],
-							legal: data[i]["isLegalMoney"],
-						};
+				request.onload = function () {
+					const coins = JSON.parse(request.responseText);
+					for (const coin of coins) {
+						walletInfo[coin["coin"]] = { name: coin["name"], amount: coin["free"], isLegalMoney: coin["isLegalMoney"] };
 					}
-				}
-				/*0:
-			coin: "STPT"
-			depositAllEnable: true
-			free: "0"
-			freeze: "0"
-			ipoable: "0"
-			ipoing: "0"
-			isLegalMoney: false
-			locked: "0"
-			name: "Standard Tokenization Protocol"
-			networkList: [{…}]
-			storage: "0"
-			trading: true
-			withdrawAllEnable: true
-			withdrawing: "0"
-			__proto__: Object
-			1:
-			coin: "MXN"
-			depositAllEnable: true
-			free: "0"
-			freeze: "0"
-			ipoable: "0"
-			ipoing: "0"
-			isLegalMoney: true
-			locked: "0"
-			name: "Mexican Peso"
-			networkList: [{…}]
-			storage: "0"
-			trading: false
-			withdrawAllEnable: true
-			withdrawing: "0"
-			*/
-				let markup = "";
-				for (let symbol in walletInfo) {
-					let name = walletInfo[symbol]["name"];
-					let amount = walletInfo[symbol]["amount"];
-					let legal = walletInfo[symbol]["legal"];
+					resolve(walletInfo);
+				};
+			});
+		}
+
+		async function updateBalance() {
+			const walletInfo = await getWalletInfo();
+			let markup = "";
+			for (const symbol in walletInfo) {
+				const amount = walletInfo[symbol]["amount"];
+				if (amount > 0) {
+					const name = walletInfo[symbol]["name"];
+					const legal = walletInfo[symbol]["isLegalMoney"];
 					markup +=
 						"<tr><td>" +
 						symbol +
@@ -548,8 +549,8 @@
 						legal +
 						"</td><td><input class='hedge-amount form-control'></td><td><input type='button' class='btn btn-danger hedge-btn' value='Hedge'></td></tr>";
 				}
-				$("#balance-table > tbody").html(markup);
-			};
+			}
+			$("#balance-table > tbody").html(markup);
 		}
 
 		function getExchangeInfo() {
@@ -727,6 +728,9 @@
 				if (amountA < minNotional[XA]) {
 					throw "[Min_notional warning] Trade aborted, Amount of " + A + " will likely not satisfy min-notional filter for " + XA;
 				}
+
+				// This is to prevent precision problem
+				amountA = roundTickSize(amountA, BA);
 
 				// Part 1
 				try {
@@ -1038,6 +1042,9 @@
 				if (amountA < minNotional[BA]) {
 					throw "[Min_notional warning] Trade aborted, Amount of " + "USDT" + " will likely not satisfy min-notional filter for " + BA;
 				}
+
+				// This is to prevent precision problem
+				amountA = roundTickSize(amountA, XA);
 
 				// Part 1
 				try {
@@ -1365,9 +1372,12 @@
 				request.send();
 				request.onload = function () {
 					if ((request.status >= 200) & (request.status < 300)) {
+						console.log("下单成功");
+						console.log("返回值 " + request.responseText);
 						resolve(JSON.parse(request.responseText));
 					} else {
-						console.log(request.responseText);
+						console.log("下单失败");
+						console.log("返回值 " + request.responseText);
 						reject(JSON.parse(request.responseText));
 					}
 				};
@@ -1408,8 +1418,11 @@
 				request.send();
 				request.onload = function () {
 					if ((request.status >= 200) & (request.status < 300)) {
+						console.log("下单成功");
+						console.log(request.responseText);
 						resolve(JSON.parse(request.responseText));
 					} else {
+						console.log("下单失败");
 						console.log(request.responseText);
 						reject(JSON.parse(request.responseText));
 					}
