@@ -183,8 +183,6 @@
 	</body>
 	<script>
 		var apiKey, secretKey;
-		apiKey = "3U2728RdbRudmyevciWNLCr4EI7sNQ9fJGrRYMBzqSrbPND9FCiS9mJIqZojLfd6";
-		secretKey = "qUw9tXyT5cnjTftte46FOyCh1Y7VQETLatxNtLY4QUBuKwOVFBsOA5SuxMRdZnaZ";
 		var cRate = 0.1 / 100;
 
 		var autoTrade = document.querySelector("input#auto-trade").checked; // Auto trade button checked?
@@ -399,9 +397,6 @@
 							}
 							const X = elem["X"];
 							const A = elem["A"];
-							if (A === "USDT") {
-								continue;
-							}
 							const B = elem["B"];
 							const XA = elem["XA"];
 							const XB = elem["XB"];
@@ -721,7 +716,7 @@
 
 		async function trade(amountA, X, B, A, XB, XA, BA, direction, orderBook) {
 			if (direction == 1) {
-				if (amountA / orderBook[BA] < minNotional[XB]) {
+				if (amountA / orderBook[BA]["ba"] < minNotional[XB]) {
 					throw "[Min_notional warning] Trade aborted, Amount of " + A + " will likely not satisfy min-notional filter for " + XB;
 				}
 
@@ -1035,12 +1030,12 @@
 
 				return "Arbitrage successful, X: " + X + ", B: " + B + ", A: " + A + ", direction: 1";
 			} else if (direction == 2) {
-				if ((amountA / orderBook[XA]) * orderBook[XB] < minNotional[XB]) {
-					throw "[Min_notional warning] Trade aborted, Amount of " + "USDT" + " will likely not satisfy min-notional filter for " + XB;
+				if ((amountA / orderBook[XA]["ba"]) * orderBook[XB]["bb"] < minNotional[XB]) {
+					throw "[Min_notional warning] Trade aborted, Amount of " + A + " will likely not satisfy min-notional filter for " + XB;
 				}
 
 				if (amountA < minNotional[BA]) {
-					throw "[Min_notional warning] Trade aborted, Amount of " + "USDT" + " will likely not satisfy min-notional filter for " + BA;
+					throw "[Min_notional warning] Trade aborted, Amount of " + A + " will likely not satisfy min-notional filter for " + BA;
 				}
 
 				// This is to prevent precision problem
@@ -1382,26 +1377,26 @@
 					}
 				};
 			});
-			// const queryString = "symbol=" + symbol.toUpperCase() + "&side=BUY&type=MARKET&quoteOrderQty=" + quoteOrderQty + "&recvWindow=5000&timestamp=" + Date.now();
-			// // console.log(queryString);
-			// const success = {
-			// 	executedQty: Math.random() * 10,
-			// 	cummulativeQuoteQty: quoteOrderQty,
-			// };
-			// const min_notional = { msg: "Filter failure: MIN_NOTIONAL" };
-			// const lot_size = { msg: "Filter failure: LOT_SIZE" };
-			// const insufficient_fund = {
-			// 	msg: "Account has insufficient balance for requested action.",
-			// };
-			// const msg = [success, min_notional, lot_size, insufficient_fund];
-			// const pick = msg[Math.floor(Math.random() * msg.length)];
-			// if (pick === success) {
-			// 	// console.log(pick);
-			// 	return pick;
-			// } else {
-			// 	// console.log(pick);
-			// 	throw pick;
-			// }
+			// 	const queryString = "symbol=" + symbol.toUpperCase() + "&side=BUY&type=MARKET&quoteOrderQty=" + quoteOrderQty + "&recvWindow=5000&timestamp=" + Date.now();
+			// 	console.log(queryString);
+			// 	const success = {
+			// 		executedQty: Math.random() * 10,
+			// 		cummulativeQuoteQty: quoteOrderQty,
+			// 	};
+			// 	const min_notional = { msg: "Filter failure: MIN_NOTIONAL" };
+			// 	const lot_size = { msg: "Filter failure: LOT_SIZE" };
+			// 	const insufficient_fund = {
+			// 		msg: "Account has insufficient balance for requested action.",
+			// 	};
+			// 	const msg = [success, min_notional, lot_size, insufficient_fund];
+			// 	const pick = msg[Math.floor(Math.random() * msg.length)];
+			// 	if (pick === success) {
+			// 		console.log(pick);
+			// 		return pick;
+			// 	} else {
+			// 		console.log(pick);
+			// 		throw pick;
+			// 	}
 		}
 
 		function placeMarketSellOrder(symbol, quantity) {
@@ -1419,35 +1414,35 @@
 				request.onload = function () {
 					if ((request.status >= 200) & (request.status < 300)) {
 						console.log("下单成功");
-						console.log(request.responseText);
+						console.log("返回值 " + request.responseText);
 						resolve(JSON.parse(request.responseText));
 					} else {
 						console.log("下单失败");
-						console.log(request.responseText);
+						console.log("返回值 " + request.responseText);
 						reject(JSON.parse(request.responseText));
 					}
 				};
 			});
-			// const queryString = "symbol=" + symbol.toUpperCase() + "&side=SELL&type=MARKET&quantity=" + quantity + "&recvWindow=5000&timestamp=" + Date.now();
-			// // console.log(queryString);
-			// const success = {
-			// 	executedQty: quantity,
-			// 	cummulativeQuoteQty: Math.random() * 10,
-			// };
-			// const min_notional = { msg: "Filter failure: MIN_NOTIONAL" };
-			// const lot_size = { msg: "Filter failure: LOT_SIZE" };
-			// const insufficient_fund = {
-			// 	msg: "Account has insufficient balance for requested action.",
-			// };
-			// const msg = [success, min_notional, lot_size, insufficient_fund];
-			// const pick = msg[Math.floor(Math.random() * msg.length)];
-			// if (pick === success) {
-			// 	// console.log(pick);
-			// 	return pick;
-			// } else {
-			// 	// console.log(pick);
-			// 	throw pick;
-			// }
+			// 	const queryString = "symbol=" + symbol.toUpperCase() + "&side=SELL&type=MARKET&quantity=" + quantity + "&recvWindow=5000&timestamp=" + Date.now();
+			// 	console.log(queryString);
+			// 	const success = {
+			// 		executedQty: quantity,
+			// 		cummulativeQuoteQty: Math.random() * 10,
+			// 	};
+			// 	const min_notional = { msg: "Filter failure: MIN_NOTIONAL" };
+			// 	const lot_size = { msg: "Filter failure: LOT_SIZE" };
+			// 	const insufficient_fund = {
+			// 		msg: "Account has insufficient balance for requested action.",
+			// 	};
+			// 	const msg = [success, min_notional, lot_size, insufficient_fund];
+			// 	const pick = msg[Math.floor(Math.random() * msg.length)];
+			// 	if (pick === success) {
+			// 		console.log(pick);
+			// 		return pick;
+			// 	} else {
+			// 		console.log(pick);
+			// 		throw pick;
+			// 	}
 		}
 
 		function precision(a) {
@@ -1484,8 +1479,8 @@
 			side = side.toUpperCase();
 			switch (side) {
 				case "BUY":
-					amount = roundTickSize(amount, symbol);
 					while (true) {
+						amount = roundTickSize(amount - tickSize[symbol], symbol);
 						try {
 							const orderInfo = await placeMarketBuyOrder(symbol, amount);
 							return orderInfo;
@@ -1502,8 +1497,8 @@
 					break;
 
 				case "SELL":
-					amount = roundLotSize(amount, symbol);
 					while (true) {
+						amount = roundLotSize(amount - lotSize[symbol], symbol);
 						try {
 							const orderInfo = await placeMarketSellOrder(symbol, amount);
 							return orderInfo;
