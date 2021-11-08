@@ -184,6 +184,7 @@
 <script>
 	var apiKey, secretKey;
 	var cRate = 0.1 / 100;
+	var logged_in = false;
 
 	var autoTrade = document.querySelector("input#auto-trade").checked; // Auto trade button checked?
 
@@ -303,6 +304,7 @@
 	}
 
 	$(document).ready(function () {
+		initAutoTradeBtn();
 		$(".submitBtn").click(() => {
 			setTimeout(login);
 		});
@@ -315,7 +317,6 @@
 		});
 		populateDpTable()
 			.then(setupOrderBookAndCombinedOrderBook)
-			.then(initAutoTradeBtn)
 			.then(function updateDpTable([orderBook, combinedOrderBook]) {
 				const dptableBody = document.querySelector("#dptable > tbody");
 				const dptableRows = dptableBody.children;
@@ -324,8 +325,8 @@
 						document.querySelector("#auto-trade-notice").textContent = "";
 						combinedOrderBook = sortCombinedOrderBook(combinedOrderBook);
 						let maxDisplayRows = document.querySelector("#max-display-rows").value;
-						// for (const row of Array.from(dptableRows).slice(maxDisplayRows, dptableRows.length)){
-						//     row.hidden = true;
+						// for (const row of Array.from(dptableRows).slice(maxDisplayRows, dptableRows.length)) {
+						// 	row.hidden = true;
 						// }
 						let i = 0;
 						for (const elem of combinedOrderBook.slice(0, maxDisplayRows)) {
@@ -367,11 +368,11 @@
 
 	var intervalID;
 
-	async function initAutoTradeBtn([orderBook, combinedOrderBook]) {
+	async function initAutoTradeBtn() {
 		document.querySelector("input#auto-trade").addEventListener("change", function () {
 			autoTrade = this.checked;
 			if (autoTrade) {
-				if (apiKey === undefined || secretKey === undefined) {
+				if (!logged_in) {
 					alert("Please enter your apiKey and secretKey first");
 					this.checked = false;
 					autoTrade = false;
@@ -418,7 +419,7 @@
 				clearInterval(intervalID);
 			}
 		});
-		return [orderBook, combinedOrderBook];
+		return;
 	}
 
 	async function initExeBtn([orderBook, dptableRows]) {
@@ -474,6 +475,7 @@
 				updateBalance();
 				$("#apiKey").val("");
 				$("#secretKey").val("");
+				logged_in = true;
 			} else {
 				$("#login-status").text("Login failed, please inspect! " + request.responseText);
 			}
@@ -1374,12 +1376,12 @@
 			request.send();
 			request.onload = function () {
 				if ((request.status >= 200) & (request.status < 300)) {
-					console.log("下单成功");
-					console.log("返回值 " + request.responseText);
+					console.log("Order placed successfully");
+					console.log("Return: " + request.responseText);
 					resolve(JSON.parse(request.responseText));
 				} else {
-					console.log("下单失败");
-					console.log("返回值 " + request.responseText);
+					console.log("Order placed unsuccessfully");
+					console.log("Return: " + request.responseText);
 					reject(JSON.parse(request.responseText));
 				}
 			};
@@ -1420,12 +1422,12 @@
 			request.send();
 			request.onload = function () {
 				if ((request.status >= 200) & (request.status < 300)) {
-					console.log("下单成功");
-					console.log("返回值 " + request.responseText);
+					console.log("Order placed successfully");
+					console.log("Return: " + request.responseText);
 					resolve(JSON.parse(request.responseText));
 				} else {
-					console.log("下单失败");
-					console.log("返回值 " + request.responseText);
+					console.log("Order placed unsuccessfully");
+					console.log("Return: " + request.responseText);
 					reject(JSON.parse(request.responseText));
 				}
 			};
